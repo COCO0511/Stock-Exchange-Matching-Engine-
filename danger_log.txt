@@ -1,0 +1,53 @@
+Danger Log
+
+- When creating a database table, it's crucial to maintain a high level of consistency 
+  in the type of each attribute, especially when subsequent code utilizes a specific 
+  attribute. Changing its type can lead to problematic results. 
+  - 'REAL' is equivalent to the float type and 'FLOAT8' is equivalent to the DOUBLE. 
+    If we used them mixly, we would got results with many decimal places which are not
+    what we expected.
+
+- After CANCEL operation, the balance and share should be returned to the buyer's ACCOUNT
+  and seller's POSITION.
+
+- When we do an insert operation to the table, if an attribute in the table creation 
+  is set as 'NOT NULL' but the value for this attribute is not included in the insert 
+  statement, it will result in an error, preventing the insertion from taking place. 
+  (but it is wired that the try catch didn't throw an exception.)
+
+- In CANCEL operation, we need to go through the OPEN_ORDER table to check if the order 
+  is open. Only if the order is open we can do the CANCEL operation, otherwise we should
+  response an error.
+
+- In executing order, the order time posted by seller and buyer is important. We need to 
+  compare the price according to the time in order to decide whether we should do the refund
+  operation. 
+
+- We need check each function's argument order carefully. In a completed project, there
+  are lots of functions and arguments and they all connected with each other, so if we mixed 
+  the arguments' order accidently, it would be a big work to check the error one. And sometimes
+  we need many results to ensure which one is wrong.
+
+- We used 'SELECT ... FOR UPDATE' as row lock to avoid database concurrency. But it needs to 
+  be treated carefully. When the session commited then it unlocked, so if we put it in a loop,
+  and the session doesn't commit, the next operation cannot be done and it would be locked mutiple
+  times which could attribute errors.
+
+- At first, we put the account_id into CANCEL table. This makes only member who is fit in 
+  the account_id can cancel the order. After we tested the cancel cases, we found the most important
+  attribute in CANCEL is trans_id. [update: add checkBelong to check whether this order belons to this account_id]
+  
+- When we test 100 clients give request in the same, the program can run successfully. But when 
+  the number of client increase to 500 and more, the program printed segmentation fault. After 
+  carefully check the valgrind, we found there is a hidden danger in the use of pthread_create.
+  When we create too many thread but not free them, it could be too many overflow the heap. So the
+  socket between server and client cannot be connected anymore. And the solution is to create threadpool.
+
+- When we add position, we firstly use row lock and then do the "insert" or "update" operation. However, 
+deadlock sometimes occurs. Solution: combine them into one exec() call using "INSERT ON CONFLICT DO UPDATE".
+And primary key in position table is (account_ID, SYM).
+
+- When a new transaction is being initiated (Started transaction<READ COMMITTED>) while there is already 
+an active transaction at the same isolation level (READ COMMITTED) that has not yet been completed (either 
+committed or rolled back), there is a warning "Started transaction<READ COMMITTED> while transaction
+<READ COMMITTED> still active.". So we must W.commit() before we start a new work W(C).

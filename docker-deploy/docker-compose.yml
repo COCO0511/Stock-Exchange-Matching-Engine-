@@ -1,0 +1,20 @@
+version: '2'
+
+services:
+  db:
+    image: postgres
+    environment:
+      - POSTGRES_DB=matching
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=passw0rd
+
+  server:
+      user: root
+      build: ./src
+      command: bash -c "cd /src && chmod o+x run.sh && ./run.sh" 
+      volumes:
+        - ./src:/src
+      ports:
+        - "12345:12345"
+      depends_on:
+        - db
